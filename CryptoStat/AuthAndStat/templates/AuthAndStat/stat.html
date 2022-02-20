@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<input type="date">
+<input type="date">
+<input type="submit" value="Send" onclick="send()"/>
+<div id="count_sum"></div>
+</body>
+<script>
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", "/",true)
+    xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+    xhr.send("Name="+name+"&Color="+color+"&IsOlder="+isOlder+"&DayTime="+day)
+
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState == 4 && xhr.status == 200) {
+            document.body.innerHTML = xhr.responseText;
+        }
+    }
+</script>
+</html>

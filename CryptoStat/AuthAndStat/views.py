@@ -4,6 +4,7 @@ from .forms import UserForm
 import asyncio
 import websockets
 import json
+from CryptoStat.CryptoStat import settings
 
 
 def index(request):
@@ -21,6 +22,7 @@ def index(request):
                     },
                     "jsonrpc": "2.0",
                 }
+            settings.TIME_FOR_REFRESH = form.cleaned_data['time_refresh']
 
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
@@ -43,7 +45,10 @@ def index(request):
 
 
 def stat(request):
-    return HttpResponse("<h1> Stat </h1>")
+    if request.method == 'POST':
+        pass
+    else:
+        return render(request, "AuthAndStat/stat.html")
 
 
 def settings(request):
