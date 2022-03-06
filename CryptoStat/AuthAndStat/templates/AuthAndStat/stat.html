@@ -3,23 +3,114 @@
 <head>
     <meta charset="UTF-8">
     <title>Title</title>
-</head>
-<body>
-<input type="date">
-<input type="date">
-<input type="submit" value="Send" onclick="send()"/>
-<div id="count_sum"></div>
-</body>
-<script>
-    var xhr = new XMLHttpRequest();
-    xhr.open("POST", "/",true)
-    xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-    xhr.send("Name="+name+"&Color="+color+"&IsOlder="+isOlder+"&DayTime="+day)
-
-    xhr.onreadystatechange = function () {
-        if (xhr.readyState == 4 && xhr.status == 200) {
-            document.body.innerHTML = xhr.responseText;
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+    <style>
+        #chart{
+            display: none;
         }
+    </style>
+</head>
+<body class="container">
+    <div class="row align-items-center" style="height: 100%;">
+        <form method="get" id="getStatus">
+            {% csrf_token %}
+            <input type="submit" value="Запустить анализ" id="run"/>
+        </form>
+        <form method="post" id="sendAjax">
+            {% csrf_token %}
+            {{ form.date_start }} <br>
+            {{ form.date_end }} <br>
+            <input type="submit" value="Send" class="btn btn-primary"/>
+        </form>
+    </div>
+</body>
+<div id="chart"></div>
+<script src="https://www.gstatic.com/charts/loader.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", getStatusInStart);
+    google.charts.load('current', {
+      packages: ['corechart']
+    });
+
+    var form_chart = document.getElementById('sendAjax');
+    form_chart.addEventListener('submit', function(e) {
+        e.preventDefault();
+        send(form_chart.csrfmiddlewaretoken.value);
+    });
+    var form_task = document.getElementById('getStatus');
+    form_task.addEventListener('submit', function(e) {
+        e.preventDefault();
+        getStatus(form_task.csrfmiddlewaretoken.value);
+    });
+    function send(token) {
+        var date_start = document.getElementById('id_date_start').value;
+        var date_end = document.getElementById('id_date_end').value;
+
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", "/stat",true)
+        xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+        xhr.send("csrfmiddlewaretoken="+token+"&Start="+date_start+"&End="+date_end)
+
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState == 4 && xhr.status == 200) {
+                drawChart(xhr.responseText)
+                document.getElementById('chart').style.display = 'block'
+            }
+        }
+    }
+
+    function getStatus(token)
+    {
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", "/getstatus",true)
+        xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+        xhr.send("csrfmiddlewaretoken="+token)
+
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState == 4 && xhr.status == 200) {
+                console.log(document.getElementById('run'))
+                document.getElementById('run').value = xhr.responseText
+            }
+        }
+    }
+
+    function getStatusInStart()
+    {
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", "/getstatus", true)
+        xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+        xhr.send();
+
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState == 4 && xhr.status == 200) {
+                console.log(document.getElementById('run'))
+                document.getElementById('run').value = xhr.responseText
+            }
+        }
+    }
+
+    function drawChart(response)
+    {
+
+        data = [['Date', 'BTC', 'ETC']]
+        schedule = JSON.parse(response)
+
+        date1 = new Date(document.getElementById('id_date_start').value)
+        date2 = new Date(document.getElementById('id_date_end').value)
+        diff = Math.ceil(Math.abs(date2.getTime() - date1.getTime()) / (1000 * 3600 * 24));
+        for (i=0; i<=diff;i++)
+        {
+            console.log(date1)
+            cur = []
+            cur.push(date1.toLocaleDateString())
+            cur.push(schedule.btc[i])
+            cur.push(schedule.eth[i])
+            data.push(cur)
+            date1.setDate(date1.getDate()+1)
+        }
+        data = google.visualization.arrayToDataTable(data);
+        var chart = new google.visualization.LineChart(document.getElementById('chart'));
+        chart.draw(data, {width: 1500, height: 500, min: 0});
     }
 </script>
 </html>
