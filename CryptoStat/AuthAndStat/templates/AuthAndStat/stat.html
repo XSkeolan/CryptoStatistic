@@ -37,11 +37,13 @@
         e.preventDefault();
         send(form_chart.csrfmiddlewaretoken.value);
     });
+
     var form_task = document.getElementById('getStatus');
     form_task.addEventListener('submit', function(e) {
         e.preventDefault();
         getStatus(form_task.csrfmiddlewaretoken.value);
     });
+
     function send(token) {
         var date_start = document.getElementById('id_date_start').value;
         var date_end = document.getElementById('id_date_end').value;

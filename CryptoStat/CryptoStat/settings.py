@@ -130,7 +130,8 @@ CELERY_REDIS_PORT = '6379'
 CELERY_BROKER_URL = 'redis://' + CELERY_REDIS_HOST + ':' + CELERY_REDIS_PORT + '/0'
 CELERY_BROKER_TRANSPORT_OPTIONS = {'visibility_timeout': 3600}
 CELERY_RESULT_BACKEND = 'redis://' + CELERY_REDIS_HOST + ':' + CELERY_REDIS_PORT + '/0'
-CELERY_IMPORTS = ("AuthAndStat.models",'CryptoStat.celery', 'CryptoStat.settings', )
+CELERY_IMPORTS = ("AuthAndStat.models", 'CryptoStat.celery', 'CryptoStat.settings', )
+#CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 
 # Custom settings
 TIME_FOR_REFRESH = 1

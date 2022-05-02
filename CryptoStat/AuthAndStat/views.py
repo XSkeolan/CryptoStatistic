@@ -45,23 +45,30 @@ def index(request):
                                                      '', scope='session:test wallet:read')
                 pprint(response)
                 CryptoStat.settings.ACCESS_TOKEN = response['result']['access_token']
+                print(CryptoStat.settings)
                 try:
                     task = PeriodicTask.objects.get(name='authorize')
-                    task.args = json.dumps([CryptoStat.settings.USER_ID,CryptoStat.settings.API_KEY])
+                    task.args = json.dumps([CryptoStat.settings.USER_ID, CryptoStat.settings.API_KEY])
                 except django_celery_beat.models.PeriodicTask.DoesNotExist:
-                    schedule = IntervalSchedule.objects.create(every=10,
-                                                               period=IntervalSchedule.MINUTES)
-                    task = PeriodicTask.objects.create(interval=schedule,name='authorize',
+                    try:
+                        schedule = IntervalSchedule.objects.get(every=10, period=IntervalSchedule.MINUTES)
+                    except django_celery_beat.models.IntervalSchedule.DoesNotExist:
+                        schedule = IntervalSchedule.objects.create(every=10, period=IntervalSchedule.MINUTES)
+
+                    task = PeriodicTask.objects.create(interval=schedule, name='authorize',
                                                        task='authorize',
-                                                       args=json.dumps([CryptoStat.settings.USER_ID,CryptoStat.settings.API_KEY]))
-                    task.enabled = True
-                    task.save()
+                                                       args=json.dumps([CryptoStat.settings.USER_ID, CryptoStat.settings.API_KEY]))
+
+                task.enabled = True  # если задача при первом enable сразу запускается то false
+                task.save()
                 print(CryptoStat.settings.ACCESS_TOKEN)
                 form = UserForm()
                 data['error'] = ''
                 return HttpResponseRedirect('/stat')
             except ApiException as ex:
                 data['error'] = 'Invalid key'
+        else:
+            data['error'] = 'Invalid form'
     else:
         form = UserForm()
         data['error'] = ''
@@ -73,43 +80,41 @@ def stat(request):
     if request.method == 'POST':
         start_date = request.POST['Start']
         end_date = request.POST['End']
+
         rows = Info.objects.filter(date__gte=start_date, date__lte=end_date)
-        print(len(rows))
+
         d1 = datetime.date.fromisoformat(start_date)
         d2 = datetime.date.fromisoformat(end_date)
         delta = (d2-d1).days
+
         dates = []
         eth = []
         btc = []
         for i in range(0, delta+1):
             dates.append(d1+datetime.timedelta(days=i))
-            print(dates[i])
+
         is_find = False
         for i in range(len(dates)):
             for j in range(len(rows)):
                 if rows[j].date == dates[i]:
                     is_find = True
                     if rows[j].currency == 'ETH':
-                        eth.append(3)
+                        eth.append(float((str(rows[j].equity)[:-2]).replace(',', '.')))
                     else:
-                        btc.append(6)
+                        btc.append(float((str(rows[j].equity)[:-2]).replace(',', '.')))
             if not is_find:
                 eth.append(0)
                 btc.append(0)
             is_find = False
 
         d = {'eth': eth, 'btc': btc}
+        print(d)
         return HttpResponse(json.dumps(d))
     else:
         form = InfoForm()
         data = dict()
         data['error'] = ''
         data['form'] = form
-        tasks = app.control.inspect()
-        if tasks.active() is None:
-            data['iswork'] = 'Run analysis'
-        else:
-            data['iswork'] = 'Stop analysis'
         return render(request, "AuthAndStat/stat.html", data)
 
 
@@ -117,6 +122,9 @@ def getStatus(request):
     if request.method == 'GET':
         try:
             task = PeriodicTask.objects.get(name='write_in_database')
+            print(CryptoStat.settings.ACCESS_TOKEN)
+            task.args = json.dumps([CryptoStat.settings.ACCESS_TOKEN])
+            task.save()
             print(type(task))
             if task.enabled:
                 return HttpResponse('Остановить анализ')
@@ -127,6 +135,7 @@ def getStatus(request):
     elif request.method == 'POST':
         try:
             task = PeriodicTask.objects.get(name='write_in_database')
+            print(task)
             if task.enabled:
                 task.enabled = False
                 task.save()
@@ -136,8 +145,14 @@ def getStatus(request):
                 task.save()
                 return HttpResponse('Остановить анализ')
         except django_celery_beat.models.PeriodicTask.DoesNotExist:
-            schedule = IntervalSchedule.objects.create(every=CryptoStat.settings.TIME_FOR_REFRESH,
-                                                       period=IntervalSchedule.SECONDS)
+            try:
+                schedule = IntervalSchedule.objects.get(every=CryptoStat.settings.TIME_FOR_REFRESH,
+                                                        period=IntervalSchedule.SECONDS)
+            except django_celery_beat.models.IntervalSchedule.DoesNotExist:
+                schedule = IntervalSchedule.objects.create(every=CryptoStat.settings.TIME_FOR_REFRESH,
+                                                           period=IntervalSchedule.SECONDS)
+            print('Token')
+            print(CryptoStat.settings.ACCESS_TOKEN)
             task = PeriodicTask.objects.create(interval=schedule, name='write_in_database', task='write_in_database',
                                                args=json.dumps([CryptoStat.settings.ACCESS_TOKEN]))
             task.enabled = True
