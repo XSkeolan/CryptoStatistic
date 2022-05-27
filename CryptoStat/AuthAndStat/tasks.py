@@ -60,7 +60,7 @@ def write_in_database(access_token):
             print(task)
             task_db = PeriodicTask.objects.get(name='write_in_database')
             task.start_time = datetime.utcnow() + timedelta(0, 10)
-            # попробовать поменять start time. Осталось только авторизация
+
             task.enabled = True
             task.save()
 
