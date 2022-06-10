@@ -47,8 +47,6 @@ def write_in_database(access_token):
             m.save()
         else:
             print('filtered by date ETH != 0')
-            # if random.randint(1, 15) == 13:
-            #     raise ApiException(302, 'Bad Request')
             ob = Info.objects.get(date=date_write, currency=currency)
             ob.equity = equity
             ob.save()
@@ -60,7 +58,7 @@ def write_in_database(access_token):
             print(task)
             task_db = PeriodicTask.objects.get(name='write_in_database')
             task.start_time = datetime.utcnow() + timedelta(0, 10)
-
+            print(task.start_time)
             task.enabled = True
             task.save()
 
@@ -85,7 +83,6 @@ def authorize(user_id, secret_key):
         pprint(response)
         task = PeriodicTask.objects.get(name='write_in_database')
         task.args = json.dumps([response['result']['access_token']])
-        task.enabled = True
         task.save()
     except ApiException as ex:
         print('authorize error - ' + ex.reason)

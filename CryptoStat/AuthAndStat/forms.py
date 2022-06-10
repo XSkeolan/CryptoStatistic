@@ -4,15 +4,15 @@ from django import forms
 
 class UserForm(Form):
     user_id = forms.CharField(label='User Id', widget=forms.TextInput(attrs={
-        "class": 'form-control',
+        "class": 'form-control mb-3',
         'placeholder': 'User Id'
     }))
     api_key = forms.CharField(label='API Key', widget=forms.TextInput(attrs={
-        'class': 'form-control',
+        'class': 'form-control mb-3',
         'placeholder': 'API Key'
     }))
     time_refresh = forms.IntegerField(label='Time to refresh(sec)', min_value=1, widget=forms.NumberInput(attrs={
-        'class': 'form-control',
+        'class': 'form-control mb-5',
         'placeholder': 'Time to refresh(sec)'
     }))
 

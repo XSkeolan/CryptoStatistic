@@ -1,0 +1,40 @@
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    font-size: 18px;
+}
+
+.banner-text {
+    padding: 15px;
+    color: #fff;
+    font-weight: bold;
+    border-radius: 10px;
+    background-color: #0c1b21;
+}
+
+.banner-img {
+    background-image: url('/static/img/bg3.jpg');
+    background-size: cover;
+    -webkit-background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center center;
+    height: 100vh;
+}
+
+p {
+    font-size: 70px;
+}
+
+.row {
+    margin: 0;
+}
+
+.btn-info {
+    color: #fff;
+    font-weight: bold;
+}

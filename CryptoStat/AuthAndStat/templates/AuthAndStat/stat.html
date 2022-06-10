@@ -1,41 +1,157 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>Личный кабинет</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
-    <style>
-        #chart{
-            display: none;
-        }
-    </style>
+    <link rel="stylesheet" href="{% static 'css/stat.css' %}">
+    <link rel="icon" href="{% static 'img/favicon.ico' %}">
 </head>
-<body class="container">
-    <div class="row align-items-center" style="height: 100%;">
-        <form method="get" id="getStatus">
-            {% csrf_token %}
-            <input type="submit" value="Запустить анализ" id="run"/>
-        </form>
-        <form method="post" id="sendAjax">
-            {% csrf_token %}
-            {{ form.date_start }} <br>
-            {{ form.date_end }} <br>
-            <input type="submit" value="Send" class="btn btn-primary"/>
-        </form>
+<body>
+    <div class="container">
+        <nav class="navbar navbar-expand-lg navbar-dark">
+            <div class="container-fluid">
+                <a class="navbar-brand text-wrap" href="#">
+                    <img src="{% static 'img/binance.png' %}" class="d-inline-block align-text-top">
+                    Статистика с криптобиржи
+                </a>
+                <a href="/logout" class="btn btn-sm btn-danger active" role="button" aria-pressed="true">Выход</a>
+            </div>
+        </nav>
+        <div class="row mt-3" style="height: 100%;">
+            <div class="col-auto">
+                <h2 >Анализ данных</h2>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-auto">
+                <h5 id="run_header">
+                    {% if isRunning %}
+                        Состояние: работает ✔️
+                    {% else %}
+                        Состояние: остановлен ❌
+                    {% endif %}
+                </h5>
+                <div class="col align-self-center">
+                <form class="mt-3" method="post" id="getStatus">
+                    {% csrf_token %}
+                    {% if isRunning %}
+                        <input type="submit" class="btn-sm btn-danger" value="Остановить анализ" id="run"/>
+                    {% else %}
+                        <input type="submit" class="btn-sm btn-success" value="Запустить анализ" id="run"/>
+                    {% endif %}
+                </form>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <h2>Вывести полученные данные на график</h2>
+            <form method="post" id="sendAjax">
+                {% csrf_token %}
+                {{ form.date_start }} <br>
+                {{ form.date_end }} <br>
+                <input type="submit" value="Получить данные" class="btn btn-info"/>
+            </form>
+        </div>
+        <div class="row mt-5">
+            <canvas id="chart" height="1080" width="1920"></canvas>
+        </div>
     </div>
 </body>
-<div id="chart"></div>
-<script src="https://www.gstatic.com/charts/loader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@^2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@^1"></script>
 <script>
-    document.addEventListener("DOMContentLoaded", getStatusInStart);
-    google.charts.load('current', {
-      packages: ['corechart']
-    });
-
     var form_chart = document.getElementById('sendAjax');
+    var chart = null;
     form_chart.addEventListener('submit', function(e) {
         e.preventDefault();
-        send(form_chart.csrfmiddlewaretoken.value);
+        var date_start = document.getElementById('id_date_start').value;
+        var date_end = document.getElementById('id_date_end').value;
+
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", "/stat", true)
+        xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+        xhr.send("csrfmiddlewaretoken="+form_chart.csrfmiddlewaretoken.value+"&Start="+date_start+"&End="+date_end)
+
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState == 4 && xhr.status == 200) {
+                if(chart != null)
+                {
+                    chart.destroy();
+                }
+                var response = JSON.parse(xhr.responseText);
+                const ctx = document.getElementById('chart').getContext('2d');
+                document.getElementById('chart').style.backgroundColor = '#0c1b26';
+                chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        datasets: [{
+                            label: 'BTC',
+                            data: response['btc'],
+                            backgroundColor: '#f72323',
+                            borderColor: '#e84646',
+                            pointStyle: 'circle',
+                            pointRadius: 5,
+                            pointHoverRadius: 7
+                        },
+                        {
+                            label: 'ETH',
+                            data: response['eth'],
+                            backgroundColor: '#29c1f0',
+                            borderColor: '#57c4e5',
+                            pointStyle: 'circle',
+                            pointRadius: 5,
+                            pointHoverRadius: 7
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    unit: 'day'
+                                },
+                                grid: {
+                                    display: false,
+                                    color: '#fff',
+                                    lineWidth: 1
+                                },
+                                ticks: {
+                                    font: {
+                                        size: 16
+                                    }
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                grid: {
+                                    display: false,
+                                    color: '#fff',
+                                    lineWidth: 1
+                                },
+                                ticks: {
+                                    font: {
+                                        size: 16
+                                    }
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    font: {
+                                        size: 16
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                document.getElementById('chart').style.display = 'block'
+            }
+        }
     });
 
     var form_task = document.getElementById('getStatus');
@@ -44,75 +160,32 @@
         getStatus(form_task.csrfmiddlewaretoken.value);
     });
 
-    function send(token) {
-        var date_start = document.getElementById('id_date_start').value;
-        var date_end = document.getElementById('id_date_end').value;
-
-        var xhr = new XMLHttpRequest();
-        xhr.open("POST", "/stat",true)
-        xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-        xhr.send("csrfmiddlewaretoken="+token+"&Start="+date_start+"&End="+date_end)
-
-        xhr.onreadystatechange = function () {
-            if (xhr.readyState == 4 && xhr.status == 200) {
-                drawChart(xhr.responseText)
-                document.getElementById('chart').style.display = 'block'
-            }
-        }
-    }
-
     function getStatus(token)
     {
         var xhr = new XMLHttpRequest();
-        xhr.open("POST", "/getstatus",true)
+        xhr.open("POST", "/getstatus", true)
         xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
         xhr.send("csrfmiddlewaretoken="+token)
-
+        
         xhr.onreadystatechange = function () {
             if (xhr.readyState == 4 && xhr.status == 200) {
-                console.log(document.getElementById('run'))
-                document.getElementById('run').value = xhr.responseText
+                var response = JSON.parse(xhr.responseText);
+                if(response.isRunning)
+                {
+                    document.getElementById('run_header').innerText = 'Состояние: работает ✔️';
+                    document.getElementById('run').value = "Остановить анализ";
+                    document.getElementById('run').classList.add('btn-danger');
+                    document.getElementById('run').classList.remove('btn-success');
+                }
+                else
+                {
+                    document.getElementById('run_header').innerText = 'Состояние: остановлен ❌';
+                    document.getElementById('run').value = "Запустить анализ";
+                    document.getElementById('run').classList.remove('btn-danger');
+                    document.getElementById('run').classList.add('btn-success');
+                }
             }
         }
-    }
-
-    function getStatusInStart()
-    {
-        var xhr = new XMLHttpRequest();
-        xhr.open("GET", "/getstatus", true)
-        xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-        xhr.send();
-
-        xhr.onreadystatechange = function () {
-            if (xhr.readyState == 4 && xhr.status == 200) {
-                console.log(document.getElementById('run'))
-                document.getElementById('run').value = xhr.responseText
-            }
-        }
-    }
-
-    function drawChart(response)
-    {
-
-        data = [['Date', 'BTC', 'ETC']]
-        schedule = JSON.parse(response)
-
-        date1 = new Date(document.getElementById('id_date_start').value)
-        date2 = new Date(document.getElementById('id_date_end').value)
-        diff = Math.ceil(Math.abs(date2.getTime() - date1.getTime()) / (1000 * 3600 * 24));
-        for (i=0; i<=diff;i++)
-        {
-            console.log(date1)
-            cur = []
-            cur.push(date1.toLocaleDateString())
-            cur.push(schedule.btc[i])
-            cur.push(schedule.eth[i])
-            data.push(cur)
-            date1.setDate(date1.getDate()+1)
-        }
-        data = google.visualization.arrayToDataTable(data);
-        var chart = new google.visualization.LineChart(document.getElementById('chart'));
-        chart.draw(data, {width: 1500, height: 500, min: 0});
     }
 </script>
 </html>
