@@ -18,7 +18,7 @@
                 </a>
                 <a href="/logout" class="btn btn-sm btn-danger active" role="button" aria-pressed="true">Выход</a>
             </div>
-        </nav>
+        </nav>  
         <div class="row mt-3" style="height: 100%;">
             <div class="col-auto">
                 <h2 >Анализ данных</h2>
@@ -54,17 +54,149 @@
                 <input type="submit" value="Получить данные" class="btn btn-info"/>
             </form>
         </div>
-        <div class="row mt-5">
-            <canvas id="chart" height="1080" width="1920"></canvas>
+        <div class="nav nav-tabs mt-4" id="nav-tab" role="tablist">
+            <button class="nav-link active" id="nav-dbchart-tab" data-bs-toggle="tab" data-bs-target="#nav-dbchart" type="button" role="tab" aria-controls="nav-dbchart" aria-selected="true">График из базы данных</button>
+            <button class="nav-link" id="nav-realtime-tab" data-bs-toggle="tab" data-bs-target="#nav-realtime" type="button" role="tab" aria-controls="nav-realtime" aria-selected="false">График в реальном времени</button>
         </div>
+        <div class="tab-content" id="nav-tabContent">
+            <div class="tab-pane fade show active" id="nav-dbchart" role="tabpanel" aria-labelledby="nav-dbchart-tab">
+                <div class="row mt-5">
+                    <canvas id="dbchart" height="1080" width="1920"></canvas>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="nav-realtime" role="tabpanel" aria-labelledby="nav-realtime-tab">
+                <div class="row mt-5">
+                    <canvas id="realtimechart" height="1080" width="1920"></canvas>
+                </div>
+            </div>
+        </div>       
     </div>
 </body>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/moment@^2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@^1"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-streaming@2.0.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.min.js" integrity="sha384-QJHtvGhmr9XOIpI6YVutG+2QOK9T+ZnN4kzFN1RtK3zEFEIsxhlmWl5/YESvpZ13" crossorigin="anonymous"></script>
 <script>
+    window.onload = function() {
+        const ctx = document.getElementById('realtimechart').getContext('2d');
+        document.getElementById('realtimechart').style.backgroundColor = '#0c1b26';
+        var livechart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: 'BTC',
+                    data: [],
+                    backgroundColor: '#f72323',
+                    borderColor: '#e84646',
+                    pointStyle: 'circle',
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    spanGaps: false
+                },
+                {
+                    label: 'ETH',
+                    data: [],
+                    backgroundColor: '#29c1f0',
+                    borderColor: '#57c4e5',
+                    pointStyle: 'circle',
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    spanGaps: false
+                }]
+            },
+            options: {
+                scales: {
+                    x: {
+                        type: 'realtime',
+                        realtime: {
+                            duration: 60000,
+                            refresh: 10000,
+                            delay: 10000,
+                            pause: true,
+                            onRefresh: function(chart) {
+                                var xhrTimer = new XMLHttpRequest();
+                                xhrTimer.open("GET", "/realtime", true)
+                                xhrTimer.setRequestHeader("Content-type", "application/json");
+                                xhrTimer.send() 
+
+                                xhrTimer.onreadystatechange = function () {
+                                    if (xhrTimer.readyState == 4 && xhrTimer.status == 200) {
+                                        var response = JSON.parse(xhrTimer.responseText);
+                                        console.log('push')
+                                        const today = Date.now();
+                                        chart.data.datasets[0].data.push({x:today, y: response['btc']})
+                                        chart.data.datasets[1].data.push({x:today, y: response['eth']})
+                                        chart.options.scales.x.realtime.pause = false;
+                                    }
+                                }
+                                console.log('updating')
+                            }
+                        },   
+                        time: {
+                            minUnit: 'second', // smallest time format
+
+                            displayFormats: {
+                                second: "mm:ss",
+                                minute: "HH:mm",
+                                hour: "dd/MM HH:mm",
+                                day: "dd/MM",
+                                week: "dd/MM",
+                                month: "MMMM yyyy",
+                                quarter: 'MMMM yyyy',
+                                year: "yyyy",
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: "Время"
+                        },
+                        grid: {
+                            display: false,
+                            color: '#fff',
+                            lineWidth: 1
+                        },
+                        ticks: {
+                            font: {
+                                size: 16
+                            }
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: "Количество на счете"
+                        }, 
+                        beginAtZero: true,
+                        grid: {
+                            display: false,
+                            color: '#fff',
+                            lineWidth: 1
+                        },
+                        ticks: {
+                            font: {
+                                size: 16
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            font: {
+                                size: 16
+                            }
+                        }
+                    }
+                },
+                interaction: {
+                    intersect: false
+                }
+            }
+        });
+    }
     var form_chart = document.getElementById('sendAjax');
-    var chart = null;
+    var dbchart = null;
     form_chart.addEventListener('submit', function(e) {
         e.preventDefault();
         var date_start = document.getElementById('id_date_start').value;
@@ -77,14 +209,14 @@
 
         xhr.onreadystatechange = function () {
             if (xhr.readyState == 4 && xhr.status == 200) {
-                if(chart != null)
+                if(dbchart != null)
                 {
-                    chart.destroy();
+                    dbchart.destroy();
                 }
                 var response = JSON.parse(xhr.responseText);
-                const ctx = document.getElementById('chart').getContext('2d');
-                document.getElementById('chart').style.backgroundColor = '#0c1b26';
-                chart = new Chart(ctx, {
+                const ctx = document.getElementById('dbchart').getContext('2d');
+                document.getElementById('dbchart').style.backgroundColor = '#0c1b26';
+                dbchart = new Chart(ctx, {
                     type: 'line',
                     data: {
                         datasets: [{
@@ -149,7 +281,7 @@
                         }
                     }
                 });
-                document.getElementById('chart').style.display = 'block'
+                document.getElementById('dbchart').style.display = 'block';
             }
         }
     });
@@ -166,7 +298,7 @@
         xhr.open("POST", "/getstatus", true)
         xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
         xhr.send("csrfmiddlewaretoken="+token)
-        
+
         xhr.onreadystatechange = function () {
             if (xhr.readyState == 4 && xhr.status == 200) {
                 var response = JSON.parse(xhr.responseText);

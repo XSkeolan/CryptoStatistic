@@ -125,8 +125,8 @@ def stat(request):
                     elif rows[j].currency == 'BTC':
                         btc.append(float((str(rows[j].equity))))
             if not is_find:
-                eth.append(0)
-                btc.append(0)
+                eth.append(None)
+                btc.append(None)
             is_find = False
         print(len(eth))
         print(len(btc))
@@ -165,4 +165,24 @@ def logout(request):
     task = PeriodicTask.objects.get(name='authorize')
     task.enabled = False
     task.save()
+    task = PeriodicTask.objects.get(name='write_in_database')
+    task.enabled = False
+    task.save()
     return redirect('/')
+
+
+def realtime(request):
+    task = PeriodicTask.objects.get(name='authorize')
+    if not task.enabled:
+        raise PermissionDenied
+
+    task = PeriodicTask.objects.get(name='write_in_database')
+
+    conf_authed = configuration.Configuration()
+    conf_authed.access_token = task.args[2:len(task.args)-2:]
+    print('Token - ' + task.args[2:len(task.args)-2:])
+    # Use retrieved authentication token to setup private endpoint client
+    client_authed = api_client.ApiClient(conf_authed)
+    privateApi = private_api.PrivateApi(client_authed)
+    return JsonResponse({'btc': privateApi.private_get_account_summary_get(currency='BTC')['result']['equity'],
+                         'eth': privateApi.private_get_account_summary_get(currency='ETH')['result']['equity']})

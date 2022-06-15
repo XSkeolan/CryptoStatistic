@@ -24,6 +24,7 @@ def write_in_database(access_token):
         print("in try")
         conf_authed = configuration.Configuration()
         conf_authed.access_token = access_token
+        print(access_token)
         # Use retrieved authentication token to setup private endpoint client
         client_authed = api_client.ApiClient(conf_authed)
         privateApi = private_api.PrivateApi(client_authed)
